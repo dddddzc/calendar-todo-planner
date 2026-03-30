@@ -10,8 +10,8 @@ function App() {
   const [taskListOpen, setTaskListOpen] = useState(false);
 
   return (
-    <main className="min-h-screen bg-app-grid px-4 py-4 text-slate-900 md:px-6 md:py-6">
-      <div className="mx-auto flex min-h-[calc(100vh-2rem)] max-w-[1480px] flex-col gap-4 pb-40">
+    <main className="min-h-screen bg-app-grid px-3 py-3 text-slate-900 md:px-5 md:py-5">
+      <div className="mx-auto flex min-h-[calc(100vh-1.5rem)] max-w-[1480px] flex-col gap-3 pb-28 md:pb-32">
         <CalendarHeader
           currentMonth={planner.currentMonth}
           monthTaskCount={planner.monthTaskCount}

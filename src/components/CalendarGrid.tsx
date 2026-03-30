@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { MouseEvent, useMemo } from "react";
 import { COLOR_MAP } from "../lib/colors";
 import { cn } from "../lib/cn";
 import {
@@ -34,6 +34,22 @@ interface TaskSegment {
   lane: number;
   startsHere: boolean;
   endsHere: boolean;
+}
+
+function getIsoFromPointer(
+  event: MouseEvent<HTMLDivElement>,
+  week: CalendarDay[],
+) {
+  const bounds = event.currentTarget.getBoundingClientRect();
+
+  if (bounds.width <= 0) {
+    return week[0].iso;
+  }
+
+  const relativeX = Math.min(Math.max(event.clientX - bounds.left, 0), bounds.width - 1);
+  const column = Math.min(6, Math.max(0, Math.floor((relativeX / bounds.width) * 7)));
+
+  return week[column].iso;
 }
 
 function buildWeekSegments(week: CalendarDay[], tasks: Task[]) {
@@ -111,8 +127,8 @@ export function CalendarGrid({
   );
 
   return (
-    <div className="rounded-[32px] border border-slate-200/80 bg-white/70 p-3 shadow-soft backdrop-blur">
-      <div className="grid grid-cols-7 gap-2 border-b border-slate-200/80 pb-3 text-center text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+    <div className="flex-1 rounded-[28px] border border-slate-200/80 bg-white/74 p-2.5 shadow-soft backdrop-blur">
+      <div className="grid grid-cols-7 gap-1.5 border-b border-slate-200/80 pb-2 text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
         {WEEKDAY_LABELS.map((label) => (
           <div className="py-1" key={label}>
             {label}
@@ -120,7 +136,7 @@ export function CalendarGrid({
         ))}
       </div>
 
-      <div className="mt-3 space-y-2">
+      <div className="mt-2.5 space-y-1.5">
         {weeks.map((week, weekIndex) => {
           const segments = segmentsByWeek[weekIndex];
           const laneCount = Math.max(
@@ -130,18 +146,20 @@ export function CalendarGrid({
 
           return (
             <div
-              className="grid gap-2"
+              className="grid gap-1.5"
               key={week[0]?.iso ?? weekIndex}
+              onMouseMove={(event) => onDayMouseEnter(getIsoFromPointer(event, week))}
+              onMouseUp={onDayMouseUp}
               style={{
                 gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
-                gridTemplateRows: `minmax(128px, auto) repeat(${laneCount}, minmax(0, 30px))`,
+                gridTemplateRows: `minmax(72px, auto) repeat(${laneCount}, minmax(0, 22px))`,
               }}
             >
               {week.map((day, dayIndex) => (
                 <button
                   aria-label={formatLongDate(day.iso)}
                   className={cn(
-                    "relative rounded-[24px] border px-3 py-3 text-left transition",
+                    "relative rounded-[18px] border px-2 py-2 text-left transition",
                     day.isCurrentMonth
                       ? "border-slate-200/80 bg-white/88"
                       : "border-slate-200/50 bg-slate-50/75 text-slate-400",
@@ -165,7 +183,7 @@ export function CalendarGrid({
                 >
                   <span
                     className={cn(
-                      "inline-flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold",
+                      "inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold",
                       day.isToday
                         ? "bg-slate-950 text-white"
                         : day.isCurrentMonth
@@ -176,7 +194,7 @@ export function CalendarGrid({
                     {day.dayNumber}
                   </span>
 
-                  <div className="absolute inset-x-3 bottom-3 text-[11px] text-slate-300">
+                  <div className="absolute inset-x-2 bottom-2 text-[10px] text-slate-300">
                     {selectedTaskId && isWithinRange(day.iso, selectedRange)
                       ? "已选中任务范围"
                       : isWithinRange(day.iso, selectedRange)
@@ -193,10 +211,10 @@ export function CalendarGrid({
                 return (
                   <div
                     className={cn(
-                      "flex h-7 min-w-0 items-center gap-1 border px-1.5 shadow-sm transition",
+                      "flex h-5 min-w-0 items-center gap-1 border px-1 shadow-sm transition",
                       color.chipClass,
-                      segment.startsHere ? "rounded-l-xl" : "rounded-l-md",
-                      segment.endsHere ? "rounded-r-xl" : "rounded-r-md",
+                      segment.startsHere ? "rounded-l-lg" : "rounded-l-md",
+                      segment.endsHere ? "rounded-r-lg" : "rounded-r-md",
                       isSelected && "ring-2 ring-slate-900/15 shadow-[0_12px_28px_-18px_rgba(15,23,42,0.55)]",
                     )}
                     key={`${segment.task.id}-${weekIndex}`}
@@ -217,8 +235,10 @@ export function CalendarGrid({
                     {segment.startsHere ? (
                       <button
                         className={cn(
-                          "h-4 w-1.5 shrink-0 rounded-full transition",
-                          isSelected ? "bg-slate-900/35 hover:bg-slate-900/55" : "bg-transparent",
+                          "h-4 w-2 shrink-0 cursor-ew-resize rounded-full transition",
+                          isSelected
+                            ? "bg-slate-900/40 hover:bg-slate-900/60"
+                            : "bg-slate-900/15 hover:bg-slate-900/30",
                         )}
                         onMouseDown={(event) => {
                           event.preventDefault();
@@ -229,11 +249,11 @@ export function CalendarGrid({
                         type="button"
                       />
                     ) : (
-                      <span className="w-1.5 shrink-0" />
+                      <span className="w-2 shrink-0" />
                     )}
 
                     <button
-                      className="min-w-0 flex-1 truncate text-left text-[11px] font-semibold"
+                      className="min-w-0 flex-1 truncate text-left text-[10px] font-semibold"
                       onClick={() => onTaskSelect(segment.task.id)}
                       title={`${segment.task.title} · 右键删除`}
                       type="button"
@@ -244,8 +264,10 @@ export function CalendarGrid({
                     {segment.endsHere ? (
                       <button
                         className={cn(
-                          "h-4 w-1.5 shrink-0 rounded-full transition",
-                          isSelected ? "bg-slate-900/35 hover:bg-slate-900/55" : "bg-transparent",
+                          "h-4 w-2 shrink-0 cursor-ew-resize rounded-full transition",
+                          isSelected
+                            ? "bg-slate-900/40 hover:bg-slate-900/60"
+                            : "bg-slate-900/15 hover:bg-slate-900/30",
                         )}
                         onMouseDown={(event) => {
                           event.preventDefault();
@@ -256,7 +278,7 @@ export function CalendarGrid({
                         type="button"
                       />
                     ) : (
-                      <span className="w-1.5 shrink-0" />
+                      <span className="w-2 shrink-0" />
                     )}
 
                     {isSelected && resizeState?.taskId === segment.task.id ? (

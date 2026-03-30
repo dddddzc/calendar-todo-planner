@@ -48,10 +48,10 @@ export function CalendarHeader({
       </div>
 
       <div className="text-center">
-        <p className="text-lg font-semibold tracking-tight text-slate-900">
+        <p className="text-base font-semibold tracking-tight text-slate-900 md:text-lg">
           {formatMonthLabel(currentMonth)}
         </p>
-        <p className="text-sm text-slate-500">本月共 {monthTaskCount} 个任务</p>
+        <p className="text-xs text-slate-500 md:text-sm">本月共 {monthTaskCount} 个任务</p>
       </div>
 
       <button
