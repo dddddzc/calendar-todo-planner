@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { DateRange, Task, TaskColorFilter, TaskDraft, TaskFilterScope } from "../types";
+import { DateRange, Task, TaskDraft } from "../types";
 import {
   addMonths,
   compareISODate,
@@ -7,9 +7,7 @@ import {
   formatRangeLabel,
   getMonthGrid,
   getRangeDayCount,
-  isWithinRange,
   rangesOverlap,
-  shiftRange,
   sortRange,
   startOfMonth,
   toISODate,
@@ -18,9 +16,15 @@ import { loadTasks, saveTasks } from "../lib/storage";
 
 const DEFAULT_DRAFT: TaskDraft = {
   title: "",
-  description: "",
   color: "sky",
 };
+
+type ResizeEdge = "start" | "end";
+
+interface ResizeState {
+  taskId: string;
+  edge: ResizeEdge;
+}
 
 function createDraft(task?: Task): TaskDraft {
   if (!task) {
@@ -29,7 +33,6 @@ function createDraft(task?: Task): TaskDraft {
 
   return {
     title: task.title,
-    description: task.description,
     color: task.color,
   };
 }
@@ -43,78 +46,40 @@ function compareTasks(left: Task, right: Task) {
 }
 
 export function usePlanner() {
-  const todayIso = toISODate(new Date());
-  const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(new Date()));
+  const today = new Date();
+  const todayIso = toISODate(today);
+  const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(today));
   const [tasks, setTasks] = useState<Task[]>(() => loadTasks());
   const [selectedRange, setSelectedRange] = useState<DateRange>({
     start: todayIso,
     end: todayIso,
   });
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [draft, setDraft] = useState<TaskDraft>(DEFAULT_DRAFT);
   const [formError, setFormError] = useState<string | null>(null);
   const [dragAnchor, setDragAnchor] = useState<string | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
-  const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
-  const [dropTargetIso, setDropTargetIso] = useState<string | null>(null);
-  const [taskQuery, setTaskQuery] = useState("");
-  const [taskColorFilter, setTaskColorFilter] = useState<TaskColorFilter>("all");
-  const [taskScope, setTaskScope] = useState<TaskFilterScope>("selection");
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [resizeState, setResizeState] = useState<ResizeState | null>(null);
 
   useEffect(() => {
     saveTasks(tasks);
   }, [tasks]);
 
   useEffect(() => {
-    const finishSelection = () => {
-      setIsDragging(false);
+    const finishInteractions = () => {
+      setIsSelecting(false);
       setDragAnchor(null);
+      setResizeState(null);
     };
 
-    window.addEventListener("mouseup", finishSelection);
+    window.addEventListener("mouseup", finishInteractions);
 
     return () => {
-      window.removeEventListener("mouseup", finishSelection);
+      window.removeEventListener("mouseup", finishInteractions);
     };
   }, []);
 
-  useEffect(() => {
-    if (editingTaskId && !tasks.some((task) => task.id === editingTaskId)) {
-      setEditingTaskId(null);
-      setDraft(createDraft());
-    }
-  }, [editingTaskId, tasks]);
-
   const calendarDays = useMemo(() => getMonthGrid(currentMonth), [currentMonth]);
-
-  const tasksByDate = useMemo(() => {
-    return calendarDays.reduce<Record<string, Task[]>>((accumulator, day) => {
-      accumulator[day.iso] = tasks
-        .filter((task) =>
-          isWithinRange(day.iso, {
-            start: task.startDate,
-            end: task.endDate,
-          }),
-        )
-        .sort(compareTasks);
-
-      return accumulator;
-    }, {});
-  }, [calendarDays, tasks]);
-
-  const tasksInSelection = useMemo(() => {
-    return tasks
-      .filter((task) =>
-        rangesOverlap(
-          {
-            start: task.startDate,
-            end: task.endDate,
-          },
-          selectedRange,
-        ),
-      )
-      .sort(compareTasks);
-  }, [selectedRange, tasks]);
 
   const currentMonthRange = useMemo(
     () => ({
@@ -124,91 +89,110 @@ export function usePlanner() {
     [currentMonth],
   );
 
-  const scopedTasks = useMemo(() => {
-    const range = taskScope === "selection" ? selectedRange : currentMonthRange;
-
-    if (taskScope === "all") {
-      return tasks;
-    }
-
-    return tasks.filter((task) =>
-      rangesOverlap(
-        {
-          start: task.startDate,
-          end: task.endDate,
-        },
-        range,
-      ),
-    );
-  }, [currentMonthRange, selectedRange, taskScope, tasks]);
-
-  const filteredTasks = useMemo(() => {
-    const query = taskQuery.trim().toLowerCase();
-
-    return scopedTasks
-      .filter((task) => {
-        const matchesColor = taskColorFilter === "all" || task.color === taskColorFilter;
-
-        if (!matchesColor) {
-          return false;
-        }
-
-        if (!query) {
-          return true;
-        }
-
-        const searchableText = [
-          task.title,
-          task.description,
-          task.startDate,
-          task.endDate,
-        ]
-          .join(" ")
-          .toLowerCase();
-
-        return searchableText.includes(query);
-      })
+  const currentMonthTasks = useMemo(() => {
+    return tasks
+      .filter((task) =>
+        rangesOverlap(
+          {
+            start: task.startDate,
+            end: task.endDate,
+          },
+          currentMonthRange,
+        ),
+      )
       .sort(compareTasks);
-  }, [scopedTasks, taskColorFilter, taskQuery]);
+  }, [currentMonthRange, tasks]);
 
-  const editingTask = useMemo(() => {
-    if (!editingTaskId) {
+  const selectedTask = useMemo(() => {
+    if (!selectedTaskId) {
       return null;
     }
 
-    return tasks.find((task) => task.id === editingTaskId) ?? null;
-  }, [editingTaskId, tasks]);
+    return tasks.find((task) => task.id === selectedTaskId) ?? null;
+  }, [selectedTaskId, tasks]);
 
-  const monthTaskCount = useMemo(() => {
-    const visibleStart = calendarDays[0]?.iso;
-    const visibleEnd = calendarDays[calendarDays.length - 1]?.iso;
-
-    if (!visibleStart || !visibleEnd) {
-      return 0;
+  useEffect(() => {
+    if (!selectedTaskId) {
+      return;
     }
 
-    return tasks.filter((task) =>
-      rangesOverlap(
-        {
-          start: task.startDate,
-          end: task.endDate,
-        },
-        {
-          start: visibleStart,
-          end: visibleEnd,
-        },
-      ),
-    ).length;
-  }, [calendarDays, tasks]);
+    if (!selectedTask) {
+      setSelectedTaskId(null);
+      setDraft((currentDraft) => ({
+        title: "",
+        color: currentDraft.color,
+      }));
+      setFormError(null);
+      return;
+    }
+
+    setSelectedRange({
+      start: selectedTask.startDate,
+      end: selectedTask.endDate,
+    });
+  }, [selectedTask, selectedTaskId]);
+
+  const enterCreateMode = (range: DateRange) => {
+    setSelectedTaskId(null);
+    setSelectedRange(range);
+    setDraft((currentDraft) => ({
+      title: "",
+      color: currentDraft.color,
+    }));
+    setFormError(null);
+  };
 
   const handleDayMouseDown = (iso: string) => {
+    const nextRange = { start: iso, end: iso };
     setDragAnchor(iso);
-    setIsDragging(true);
-    setSelectedRange({ start: iso, end: iso });
+    setIsSelecting(true);
+    enterCreateMode(nextRange);
   };
 
   const handleDayMouseEnter = (iso: string) => {
-    if (!isDragging || !dragAnchor) {
+    if (resizeState) {
+      const task = tasks.find((currentTask) => currentTask.id === resizeState.taskId);
+
+      if (!task) {
+        return;
+      }
+
+      const nextRange =
+        resizeState.edge === "start"
+          ? {
+              start: compareISODate(iso, task.endDate) <= 0 ? iso : task.endDate,
+              end: task.endDate,
+            }
+          : {
+              start: task.startDate,
+              end: compareISODate(iso, task.startDate) >= 0 ? iso : task.startDate,
+            };
+
+      if (
+        nextRange.start === task.startDate &&
+        nextRange.end === task.endDate
+      ) {
+        return;
+      }
+
+      setTasks((currentTasks) =>
+        currentTasks
+          .map((currentTask) =>
+            currentTask.id === resizeState.taskId
+              ? {
+                  ...currentTask,
+                  startDate: nextRange.start,
+                  endDate: nextRange.end,
+                }
+              : currentTask,
+          )
+          .sort(compareTasks),
+      );
+      setSelectedRange(nextRange);
+      return;
+    }
+
+    if (!isSelecting || !dragAnchor) {
       return;
     }
 
@@ -216,99 +200,46 @@ export function usePlanner() {
   };
 
   const handleDayMouseUp = () => {
-    setIsDragging(false);
+    setIsSelecting(false);
     setDragAnchor(null);
+    setResizeState(null);
   };
 
-  const resetForm = () => {
-    setEditingTaskId(null);
-    setDraft(createDraft());
-    setFormError(null);
-  };
-
-  const handleSubmitTask = () => {
-    const title = draft.title.trim();
-
-    if (!title) {
-      setFormError("请输入任务标题。");
-      return false;
-    }
-
-    const normalizedRange = sortRange(selectedRange.start, selectedRange.end);
-
-    if (editingTaskId) {
-      setTasks((currentTasks) =>
-        currentTasks
-          .map((task) =>
-            task.id === editingTaskId
-              ? {
-                  ...task,
-                  title,
-                  description: draft.description.trim(),
-                  color: draft.color,
-                  startDate: normalizedRange.start,
-                  endDate: normalizedRange.end,
-                }
-              : task,
-          )
-          .sort(compareTasks),
-      );
-    } else {
-      const task: Task = {
-        id: crypto.randomUUID(),
-        title,
-        description: draft.description.trim(),
-        startDate: normalizedRange.start,
-        endDate: normalizedRange.end,
-        color: draft.color,
-        createdAt: new Date().toISOString(),
-      };
-
-      setTasks((currentTasks) => [task, ...currentTasks].sort(compareTasks));
-    }
-
-    setSelectedRange(normalizedRange);
-    resetForm();
-    return true;
-  };
-
-  const handleDeleteTask = (taskId: string) => {
-    if (taskId === editingTaskId) {
-      resetForm();
-    }
-
-    setTasks((currentTasks) => currentTasks.filter((task) => task.id !== taskId));
-  };
-
-  const handleEditTask = (taskId: string) => {
+  const handleTaskSelect = (taskId: string) => {
     const task = tasks.find((currentTask) => currentTask.id === taskId);
 
     if (!task) {
       return;
     }
 
-    setEditingTaskId(taskId);
-    setDraft(createDraft(task));
+    setSelectedTaskId(taskId);
     setSelectedRange({
       start: task.startDate,
       end: task.endDate,
     });
+    setDraft(createDraft(task));
     setFormError(null);
   };
 
-  const handleCancelEdit = () => {
-    resetForm();
+  const handleTaskResizeStart = (taskId: string, edge: ResizeEdge) => {
+    handleTaskSelect(taskId);
+    setResizeState({
+      taskId,
+      edge,
+    });
   };
 
-  const handleSelectedRangeChange = (field: keyof DateRange, value: string) => {
-    setSelectedRange((currentRange) => {
-      const nextRange =
-        field === "start"
-          ? { start: value, end: currentRange.end }
-          : { start: currentRange.start, end: value };
+  const handleDeleteTask = (taskId: string) => {
+    setTasks((currentTasks) => currentTasks.filter((task) => task.id !== taskId));
 
-      return sortRange(nextRange.start, nextRange.end);
-    });
+    if (selectedTaskId === taskId) {
+      setSelectedTaskId(null);
+      setDraft((currentDraft) => ({
+        title: "",
+        color: currentDraft.color,
+      }));
+      setFormError(null);
+    }
   };
 
   const handleDraftChange = <Key extends keyof TaskDraft>(field: Key, value: TaskDraft[Key]) => {
@@ -322,124 +253,98 @@ export function usePlanner() {
     }
   };
 
-  const handleTaskDragStart = (taskId: string) => {
-    setDraggingTaskId(taskId);
-    setDropTargetIso(null);
+  const handleSubmitTask = () => {
+    const title = draft.title.trim();
+
+    if (!title) {
+      setFormError("请输入任务名称。");
+      return false;
+    }
+
+    const normalizedRange = sortRange(selectedRange.start, selectedRange.end);
+
+    if (selectedTaskId) {
+      setTasks((currentTasks) =>
+        currentTasks
+          .map((task) =>
+            task.id === selectedTaskId
+              ? {
+                  ...task,
+                  title,
+                  color: draft.color,
+                  startDate: normalizedRange.start,
+                  endDate: normalizedRange.end,
+                }
+              : task,
+          )
+          .sort(compareTasks),
+      );
+      setDraft({
+        title,
+        color: draft.color,
+      });
+    } else {
+      const task: Task = {
+        id: crypto.randomUUID(),
+        title,
+        color: draft.color,
+        startDate: normalizedRange.start,
+        endDate: normalizedRange.end,
+        createdAt: new Date().toISOString(),
+      };
+
+      setTasks((currentTasks) => [task, ...currentTasks].sort(compareTasks));
+      setSelectedTaskId(task.id);
+      setDraft(createDraft(task));
+    }
+
+    setSelectedRange(normalizedRange);
+    setFormError(null);
+    return true;
   };
 
-  const handleTaskDragEnd = () => {
-    setDraggingTaskId(null);
-    setDropTargetIso(null);
-  };
-
-  const handleDayDragOver = (iso: string) => {
-    if (!draggingTaskId) {
-      return;
-    }
-
-    setDropTargetIso(iso);
-  };
-
-  const handleTaskDrop = (iso: string) => {
-    if (!draggingTaskId) {
-      return;
-    }
-
-    const task = tasks.find((currentTask) => currentTask.id === draggingTaskId);
-
-    if (!task) {
-      setDraggingTaskId(null);
-      setDropTargetIso(null);
-      return;
-    }
-
-    const nextRange = shiftRange(
-      {
-        start: task.startDate,
-        end: task.endDate,
-      },
-      iso,
-    );
-
-    setTasks((currentTasks) =>
-      currentTasks
-        .map((currentTask) =>
-          currentTask.id === draggingTaskId
-            ? {
-                ...currentTask,
-                startDate: nextRange.start,
-                endDate: nextRange.end,
-              }
-            : currentTask,
-        )
-        .sort(compareTasks),
-    );
-    if (!editingTaskId || editingTaskId === draggingTaskId) {
-      setSelectedRange(nextRange);
-    }
-    setDraggingTaskId(null);
-    setDropTargetIso(null);
+  const handleClearSelection = () => {
+    setSelectedTaskId(null);
+    setDraft((currentDraft) => ({
+      title: "",
+      color: currentDraft.color,
+    }));
     setFormError(null);
   };
 
   const selectionLabel = formatRangeLabel(selectedRange);
   const selectionDayCount = getRangeDayCount(selectedRange);
-  const hasActiveTaskFilters =
-    taskQuery.trim().length > 0 || taskColorFilter !== "all" || taskScope !== "selection";
-
-  const clearTaskFilters = () => {
-    setTaskQuery("");
-    setTaskColorFilter("all");
-    setTaskScope("selection");
-  };
 
   return {
     calendarDays,
-    clearTaskFilters,
     currentMonth,
+    currentMonthTasks,
     draft,
-    draggingTaskId,
-    dropTargetIso,
-    editingTask,
-    editingTaskId,
-    filteredTaskCount: filteredTasks.length,
-    filteredTasks,
     formError,
-    handleCancelEdit,
-    monthTaskCount,
-    scopedTaskCount: scopedTasks.length,
+    monthTaskCount: currentMonthTasks.length,
+    resizeState,
     selectedRange,
+    selectedTask,
+    selectedTaskId,
     selectionDayCount,
     selectionLabel,
-    taskColorFilter,
-    taskQuery,
-    taskScope,
-    tasksByDate,
-    tasksInSelection,
-    hasActiveTaskFilters,
     goToPrevMonth: () => setCurrentMonth((month) => addMonths(month, -1)),
     goToNextMonth: () => setCurrentMonth((month) => addMonths(month, 1)),
     goToToday: () => {
       const now = new Date();
       const iso = toISODate(now);
       setCurrentMonth(startOfMonth(now));
-      setSelectedRange({ start: iso, end: iso });
+      enterCreateMode({ start: iso, end: iso });
     },
-    handleDayDragOver,
+    handleClearSelection,
     handleDayMouseDown,
     handleDayMouseEnter,
     handleDayMouseUp,
     handleDeleteTask,
     handleDraftChange,
-    handleEditTask,
-    handleSelectedRangeChange,
     handleSubmitTask,
-    handleTaskColorFilterChange: setTaskColorFilter,
-    handleTaskDragEnd,
-    handleTaskDragStart,
-    handleTaskDrop,
-    handleTaskQueryChange: setTaskQuery,
-    handleTaskScopeChange: setTaskScope,
-    isEditing: editingTaskId !== null,
+    handleTaskResizeStart,
+    handleTaskSelect,
+    isEditingTask: selectedTaskId !== null,
   };
 }

@@ -6,6 +6,8 @@ interface CalendarHeaderProps {
   onPrev: () => void;
   onNext: () => void;
   onToday: () => void;
+  onToggleTaskList: () => void;
+  taskListOpen: boolean;
 }
 
 export function CalendarHeader({
@@ -14,24 +16,12 @@ export function CalendarHeader({
   onPrev,
   onNext,
   onToday,
+  onToggleTaskList,
+  taskListOpen,
 }: CalendarHeaderProps) {
   return (
-    <div className="flex flex-col gap-4 border-b border-slate-200/80 pb-5 lg:flex-row lg:items-center lg:justify-between">
-      <div className="space-y-2">
-        <span className="inline-flex w-fit rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-500">
-          Calendar Planner
-        </span>
-        <div>
-          <h2 className="text-3xl font-semibold tracking-tight text-slate-900">
-            {formatMonthLabel(currentMonth)}
-          </h2>
-          <p className="mt-1 text-sm text-slate-500">
-            拖拽选择连续日期，单击即可选中一天。本月视图内共有 {monthTaskCount} 个任务事件。
-          </p>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-[28px] border border-slate-200/80 bg-white/88 px-4 py-3 shadow-soft backdrop-blur">
+      <div className="flex items-center gap-2">
         <button
           className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
           onClick={onToday}
@@ -56,6 +46,25 @@ export function CalendarHeader({
           ›
         </button>
       </div>
+
+      <div className="text-center">
+        <p className="text-lg font-semibold tracking-tight text-slate-900">
+          {formatMonthLabel(currentMonth)}
+        </p>
+        <p className="text-sm text-slate-500">本月共 {monthTaskCount} 个任务</p>
+      </div>
+
+      <button
+        className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
+          taskListOpen
+            ? "border-slate-900 bg-slate-900 text-white"
+            : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:text-slate-900"
+        }`}
+        onClick={onToggleTaskList}
+        type="button"
+      >
+        任务列表
+      </button>
     </div>
   );
 }

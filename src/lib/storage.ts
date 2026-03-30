@@ -2,7 +2,7 @@ import { Task } from "../types";
 
 const STORAGE_KEY = "calendar-todo-planner:v1";
 
-function isTaskRecord(value: unknown): value is Task {
+function isTaskRecord(value: unknown) {
   if (!value || typeof value !== "object") {
     return false;
   }
@@ -12,12 +12,28 @@ function isTaskRecord(value: unknown): value is Task {
   return (
     typeof candidate.id === "string" &&
     typeof candidate.title === "string" &&
-    typeof candidate.description === "string" &&
     typeof candidate.startDate === "string" &&
     typeof candidate.endDate === "string" &&
     typeof candidate.color === "string" &&
     typeof candidate.createdAt === "string"
   );
+}
+
+function normalizeTask(value: unknown): Task | null {
+  if (!isTaskRecord(value)) {
+    return null;
+  }
+
+  const candidate = value as Partial<Task>;
+
+  return {
+    id: candidate.id!,
+    title: candidate.title!,
+    startDate: candidate.startDate!,
+    endDate: candidate.endDate!,
+    color: candidate.color as Task["color"],
+    createdAt: candidate.createdAt!,
+  };
 }
 
 export function loadTasks() {
@@ -38,7 +54,9 @@ export function loadTasks() {
       return [];
     }
 
-    return parsed.filter(isTaskRecord);
+    return parsed
+      .map((item) => normalizeTask(item))
+      .filter((task): task is Task => task !== null);
   } catch {
     return [];
   }

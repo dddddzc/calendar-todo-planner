@@ -1,6 +1,4 @@
 export type TaskColorKey = "sky" | "amber" | "emerald" | "violet" | "rose";
-export type TaskColorFilter = TaskColorKey | "all";
-export type TaskFilterScope = "selection" | "month" | "all";
 
 export interface DateRange {
   start: string;
@@ -10,7 +8,6 @@ export interface DateRange {
 export interface Task {
   id: string;
   title: string;
-  description: string;
   startDate: string;
   endDate: string;
   color: TaskColorKey;
@@ -19,7 +16,6 @@ export interface Task {
 
 export interface TaskDraft {
   title: string;
-  description: string;
   color: TaskColorKey;
 }
 
