@@ -47,6 +47,10 @@ export function startOfMonth(date: Date) {
   return createLocalDate(date.getFullYear(), date.getMonth(), 1);
 }
 
+export function endOfMonth(date: Date) {
+  return createLocalDate(date.getFullYear(), date.getMonth() + 1, 0);
+}
+
 export function compareISODate(left: string, right: string) {
   return left.localeCompare(right);
 }

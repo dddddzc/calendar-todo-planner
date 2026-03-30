@@ -2,47 +2,79 @@ import { DragEvent } from "react";
 import { COLOR_MAP, COLOR_OPTIONS } from "../lib/colors";
 import { cn } from "../lib/cn";
 import { formatRangeLabel } from "../lib/date";
-import { DateRange, Task, TaskDraft } from "../types";
+import { DateRange, Task, TaskColorFilter, TaskDraft, TaskFilterScope } from "../types";
 
 interface TaskPanelProps {
+  filteredTaskCount: number;
+  hasActiveTaskFilters: boolean;
   draft: TaskDraft;
   draggingTaskId: string | null;
   editingTaskId: string | null;
   formError: string | null;
   isEditing: boolean;
+  scopedTaskCount: number;
   selectedRange: DateRange;
   selectionDayCount: number;
   selectionLabel: string;
+  taskColorFilter: TaskColorFilter;
+  taskQuery: string;
+  taskScope: TaskFilterScope;
   tasks: Task[];
+  onClearTaskFilters: () => void;
   onCancelEdit: () => void;
   onDeleteTask: (taskId: string) => void;
   onDraftChange: <Key extends keyof TaskDraft>(field: Key, value: TaskDraft[Key]) => void;
   onEditTask: (taskId: string) => void;
   onSelectedRangeChange: (field: keyof DateRange, value: string) => void;
   onSubmitTask: () => void;
+  onTaskColorFilterChange: (value: TaskColorFilter) => void;
   onTaskDragEnd: () => void;
   onTaskDragStart: (taskId: string, event: DragEvent<HTMLElement>) => void;
+  onTaskQueryChange: (value: string) => void;
+  onTaskScopeChange: (value: TaskFilterScope) => void;
 }
 
 export function TaskPanel({
+  filteredTaskCount,
+  hasActiveTaskFilters,
   draft,
   draggingTaskId,
   editingTaskId,
   formError,
   isEditing,
+  scopedTaskCount,
   selectedRange,
   selectionDayCount,
   selectionLabel,
+  taskColorFilter,
+  taskQuery,
+  taskScope,
   tasks,
+  onClearTaskFilters,
   onCancelEdit,
   onDeleteTask,
   onDraftChange,
   onEditTask,
   onSelectedRangeChange,
   onSubmitTask,
+  onTaskColorFilterChange,
   onTaskDragEnd,
   onTaskDragStart,
+  onTaskQueryChange,
+  onTaskScopeChange,
 }: TaskPanelProps) {
+  const scopeOptions: Array<{ value: TaskFilterScope; label: string }> = [
+    { value: "selection", label: "当前选区" },
+    { value: "month", label: "当前月" },
+    { value: "all", label: "全部任务" },
+  ];
+
+  const scopeLabelMap: Record<TaskFilterScope, string> = {
+    selection: "当前选区",
+    month: "当前月",
+    all: "全部任务",
+  };
+
   return (
     <aside className="flex h-fit flex-col gap-5 rounded-[28px] border border-slate-200/80 bg-white/85 p-5 shadow-soft backdrop-blur xl:sticky xl:top-6">
       <div className="rounded-[24px] bg-slate-950 p-5 text-white">
@@ -60,6 +92,94 @@ export function TaskPanel({
           </span>
         </div>
       </div>
+
+      <section className="space-y-4 rounded-[24px] border border-slate-200/80 bg-white/80 p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h3 className="text-base font-semibold text-slate-900">任务搜索 / 筛选</h3>
+            <p className="mt-1 text-sm text-slate-500">按范围、关键词和颜色快速定位任务。</p>
+          </div>
+          {hasActiveTaskFilters ? (
+            <button
+              className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-500 transition hover:border-slate-300 hover:text-slate-900"
+              onClick={onClearTaskFilters}
+              type="button"
+            >
+              重置
+            </button>
+          ) : null}
+        </div>
+
+        <label className="block space-y-2">
+          <span className="text-sm font-medium text-slate-700">关键词</span>
+          <input
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-sky-300 focus:bg-white focus:ring-4 focus:ring-sky-100"
+            onChange={(event) => onTaskQueryChange(event.target.value)}
+            placeholder="搜索标题、描述或日期"
+            type="search"
+            value={taskQuery}
+          />
+        </label>
+
+        <div className="space-y-2">
+          <span className="text-sm font-medium text-slate-700">范围</span>
+          <div className="flex flex-wrap gap-2">
+            {scopeOptions.map((option) => (
+              <button
+                className={cn(
+                  "rounded-full border px-3 py-2 text-sm font-medium transition",
+                  taskScope === option.value
+                    ? "border-slate-900 bg-slate-900 text-white"
+                    : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900",
+                )}
+                key={option.value}
+                onClick={() => onTaskScopeChange(option.value)}
+                type="button"
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <span className="text-sm font-medium text-slate-700">颜色</span>
+          <div className="flex flex-wrap gap-2">
+            <button
+              className={cn(
+                "rounded-full border px-3 py-2 text-sm font-medium transition",
+                taskColorFilter === "all"
+                  ? "border-slate-900 bg-slate-900 text-white"
+                  : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900",
+              )}
+              onClick={() => onTaskColorFilterChange("all")}
+              type="button"
+            >
+              全部颜色
+            </button>
+            {COLOR_OPTIONS.map((option) => (
+              <button
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium transition",
+                  taskColorFilter === option.value
+                    ? cn("bg-slate-900 text-white", option.ringClass, "ring-4")
+                    : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900",
+                )}
+                key={option.value}
+                onClick={() => onTaskColorFilterChange(option.value)}
+                type="button"
+              >
+                <span className={cn("h-3 w-3 rounded-full", option.swatchClass)} />
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
+          当前范围：{scopeLabelMap[taskScope]}，共 {scopedTaskCount} 条任务，匹配结果 {filteredTaskCount} 条。
+        </div>
+      </section>
 
       <section className="space-y-4">
         <div>
@@ -170,17 +290,21 @@ export function TaskPanel({
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-base font-semibold text-slate-900">范围内任务</h3>
-            <p className="mt-1 text-sm text-slate-500">显示与当前选择区间有交集的所有任务。</p>
+            <h3 className="text-base font-semibold text-slate-900">任务列表</h3>
+            <p className="mt-1 text-sm text-slate-500">
+              当前查看 {scopeLabelMap[taskScope]} 下的任务结果。
+            </p>
           </div>
           <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-full bg-slate-100 px-2 text-sm font-semibold text-slate-700">
-            {tasks.length}
+            {filteredTaskCount}
           </span>
         </div>
 
         {tasks.length === 0 ? (
           <div className="rounded-[24px] border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm leading-6 text-slate-500">
-            这个时间段还没有任务。可以先拖拽一段日期，再创建第一个计划项。
+            {hasActiveTaskFilters
+              ? "没有匹配当前筛选条件的任务。可以调整关键词、范围或颜色。"
+              : "当前范围下还没有任务。可以先拖拽一段日期，再创建第一个计划项。"}
           </div>
         ) : (
           <div className="space-y-3">

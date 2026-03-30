@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { DateRange, Task, TaskDraft } from "../types";
+import { DateRange, Task, TaskColorFilter, TaskDraft, TaskFilterScope } from "../types";
 import {
   addMonths,
   compareISODate,
+  endOfMonth,
   formatRangeLabel,
   getMonthGrid,
   getRangeDayCount,
@@ -56,6 +57,9 @@ export function usePlanner() {
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
   const [dropTargetIso, setDropTargetIso] = useState<string | null>(null);
+  const [taskQuery, setTaskQuery] = useState("");
+  const [taskColorFilter, setTaskColorFilter] = useState<TaskColorFilter>("all");
+  const [taskScope, setTaskScope] = useState<TaskFilterScope>("selection");
 
   useEffect(() => {
     saveTasks(tasks);
@@ -111,6 +115,61 @@ export function usePlanner() {
       )
       .sort(compareTasks);
   }, [selectedRange, tasks]);
+
+  const currentMonthRange = useMemo(
+    () => ({
+      start: toISODate(startOfMonth(currentMonth)),
+      end: toISODate(endOfMonth(currentMonth)),
+    }),
+    [currentMonth],
+  );
+
+  const scopedTasks = useMemo(() => {
+    const range = taskScope === "selection" ? selectedRange : currentMonthRange;
+
+    if (taskScope === "all") {
+      return tasks;
+    }
+
+    return tasks.filter((task) =>
+      rangesOverlap(
+        {
+          start: task.startDate,
+          end: task.endDate,
+        },
+        range,
+      ),
+    );
+  }, [currentMonthRange, selectedRange, taskScope, tasks]);
+
+  const filteredTasks = useMemo(() => {
+    const query = taskQuery.trim().toLowerCase();
+
+    return scopedTasks
+      .filter((task) => {
+        const matchesColor = taskColorFilter === "all" || task.color === taskColorFilter;
+
+        if (!matchesColor) {
+          return false;
+        }
+
+        if (!query) {
+          return true;
+        }
+
+        const searchableText = [
+          task.title,
+          task.description,
+          task.startDate,
+          task.endDate,
+        ]
+          .join(" ")
+          .toLowerCase();
+
+        return searchableText.includes(query);
+      })
+      .sort(compareTasks);
+  }, [scopedTasks, taskColorFilter, taskQuery]);
 
   const editingTask = useMemo(() => {
     if (!editingTaskId) {
@@ -325,23 +384,39 @@ export function usePlanner() {
 
   const selectionLabel = formatRangeLabel(selectedRange);
   const selectionDayCount = getRangeDayCount(selectedRange);
+  const hasActiveTaskFilters =
+    taskQuery.trim().length > 0 || taskColorFilter !== "all" || taskScope !== "selection";
+
+  const clearTaskFilters = () => {
+    setTaskQuery("");
+    setTaskColorFilter("all");
+    setTaskScope("selection");
+  };
 
   return {
     calendarDays,
+    clearTaskFilters,
     currentMonth,
     draft,
     draggingTaskId,
     dropTargetIso,
     editingTask,
     editingTaskId,
+    filteredTaskCount: filteredTasks.length,
+    filteredTasks,
     formError,
     handleCancelEdit,
     monthTaskCount,
+    scopedTaskCount: scopedTasks.length,
     selectedRange,
     selectionDayCount,
     selectionLabel,
+    taskColorFilter,
+    taskQuery,
+    taskScope,
     tasksByDate,
     tasksInSelection,
+    hasActiveTaskFilters,
     goToPrevMonth: () => setCurrentMonth((month) => addMonths(month, -1)),
     goToNextMonth: () => setCurrentMonth((month) => addMonths(month, 1)),
     goToToday: () => {
@@ -359,9 +434,12 @@ export function usePlanner() {
     handleEditTask,
     handleSelectedRangeChange,
     handleSubmitTask,
+    handleTaskColorFilterChange: setTaskColorFilter,
     handleTaskDragEnd,
     handleTaskDragStart,
     handleTaskDrop,
+    handleTaskQueryChange: setTaskQuery,
+    handleTaskScopeChange: setTaskScope,
     isEditing: editingTaskId !== null,
   };
 }

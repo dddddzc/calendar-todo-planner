@@ -1,4 +1,6 @@
 export type TaskColorKey = "sky" | "amber" | "emerald" | "violet" | "rose";
+export type TaskColorFilter = TaskColorKey | "all";
+export type TaskFilterScope = "selection" | "month" | "all";
 
 export interface DateRange {
   start: string;

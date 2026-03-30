@@ -34,7 +34,7 @@ function App() {
               </div>
               <div className="rounded-[24px] border border-slate-200 bg-white px-4 py-4">
                 <p className="text-xs uppercase tracking-[0.18em] text-slate-400">任务展示</p>
-                <p className="mt-2 text-sm font-semibold text-slate-900">摘要 + Hover 详情 + 编辑改期</p>
+                <p className="mt-2 text-sm font-semibold text-slate-900">摘要 + 编辑改期 + 搜索筛选</p>
               </div>
             </div>
           </div>
@@ -69,23 +69,33 @@ function App() {
           </section>
 
           <TaskPanel
+            filteredTaskCount={planner.filteredTaskCount}
+            hasActiveTaskFilters={planner.hasActiveTaskFilters}
             draft={planner.draft}
             draggingTaskId={planner.draggingTaskId}
             editingTaskId={planner.editingTaskId}
             formError={planner.formError}
             isEditing={planner.isEditing}
+            scopedTaskCount={planner.scopedTaskCount}
+            taskColorFilter={planner.taskColorFilter}
+            taskQuery={planner.taskQuery}
+            taskScope={planner.taskScope}
+            onClearTaskFilters={planner.clearTaskFilters}
             onCancelEdit={planner.handleCancelEdit}
             onDeleteTask={planner.handleDeleteTask}
             onDraftChange={planner.handleDraftChange}
             onEditTask={planner.handleEditTask}
             onSelectedRangeChange={planner.handleSelectedRangeChange}
             onSubmitTask={planner.handleSubmitTask}
+            onTaskColorFilterChange={planner.handleTaskColorFilterChange}
             onTaskDragEnd={planner.handleTaskDragEnd}
             onTaskDragStart={planner.handleTaskDragStart}
+            onTaskQueryChange={planner.handleTaskQueryChange}
+            onTaskScopeChange={planner.handleTaskScopeChange}
             selectedRange={planner.selectedRange}
             selectionDayCount={planner.selectionDayCount}
             selectionLabel={planner.selectionLabel}
-            tasks={planner.tasksInSelection}
+            tasks={planner.filteredTasks}
           />
         </div>
       </div>
