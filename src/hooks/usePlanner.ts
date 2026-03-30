@@ -328,6 +328,10 @@ export function usePlanner() {
     selectedTaskId,
     selectionDayCount,
     selectionLabel,
+    setCurrentMonthByMonth: (monthIndex: number) =>
+      setCurrentMonth((current) => startOfMonth(new Date(current.getFullYear(), monthIndex, 1))),
+    setCurrentMonthByYear: (year: number) =>
+      setCurrentMonth((current) => startOfMonth(new Date(year, current.getMonth(), 1))),
     goToPrevMonth: () => setCurrentMonth((month) => addMonths(month, -1)),
     goToNextMonth: () => setCurrentMonth((month) => addMonths(month, 1)),
     goToToday: () => {

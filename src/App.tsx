@@ -15,10 +15,12 @@ function App() {
         <CalendarHeader
           currentMonth={planner.currentMonth}
           monthTaskCount={planner.monthTaskCount}
+          onMonthChange={planner.setCurrentMonthByMonth}
           onNext={planner.goToNextMonth}
           onPrev={planner.goToPrevMonth}
           onToday={planner.goToToday}
           onToggleTaskList={() => setTaskListOpen((currentState) => !currentState)}
+          onYearChange={planner.setCurrentMonthByYear}
           taskListOpen={taskListOpen}
         />
 
@@ -39,6 +41,7 @@ function App() {
         <TaskListPopover
           isOpen={taskListOpen}
           onClose={() => setTaskListOpen(false)}
+          onTaskDelete={planner.handleDeleteTask}
           onTaskSelect={planner.handleTaskSelect}
           tasks={planner.currentMonthTasks}
         />

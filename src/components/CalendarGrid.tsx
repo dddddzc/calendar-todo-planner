@@ -127,8 +127,8 @@ export function CalendarGrid({
   );
 
   return (
-    <div className="flex-1 rounded-[28px] border border-slate-200/80 bg-white/74 p-2.5 shadow-soft backdrop-blur">
-      <div className="grid grid-cols-7 gap-1.5 border-b border-slate-200/80 pb-2 text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+    <div className="flex-1 rounded-[24px] border border-slate-200/80 bg-white/74 p-2 shadow-soft backdrop-blur">
+      <div className="grid grid-cols-7 gap-1 border-b border-slate-200/80 pb-1.5 text-center text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
         {WEEKDAY_LABELS.map((label) => (
           <div className="py-1" key={label}>
             {label}
@@ -136,7 +136,7 @@ export function CalendarGrid({
         ))}
       </div>
 
-      <div className="mt-2.5 space-y-1.5">
+      <div className="mt-2 space-y-1">
         {weeks.map((week, weekIndex) => {
           const segments = segmentsByWeek[weekIndex];
           const laneCount = Math.max(
@@ -146,20 +146,20 @@ export function CalendarGrid({
 
           return (
             <div
-              className="grid gap-1.5"
+              className="grid gap-1"
               key={week[0]?.iso ?? weekIndex}
               onMouseMove={(event) => onDayMouseEnter(getIsoFromPointer(event, week))}
               onMouseUp={onDayMouseUp}
               style={{
                 gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
-                gridTemplateRows: `minmax(72px, auto) repeat(${laneCount}, minmax(0, 22px))`,
+                gridTemplateRows: `minmax(60px, auto) repeat(${laneCount}, minmax(0, 20px))`,
               }}
             >
               {week.map((day, dayIndex) => (
                 <button
                   aria-label={formatLongDate(day.iso)}
                   className={cn(
-                    "relative rounded-[18px] border px-2 py-2 text-left transition",
+                    "relative rounded-[16px] border px-1.5 py-1.5 text-left transition",
                     day.isCurrentMonth
                       ? "border-slate-200/80 bg-white/88"
                       : "border-slate-200/50 bg-slate-50/75 text-slate-400",
@@ -183,7 +183,7 @@ export function CalendarGrid({
                 >
                   <span
                     className={cn(
-                      "inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold",
+                      "inline-flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-semibold",
                       day.isToday
                         ? "bg-slate-950 text-white"
                         : day.isCurrentMonth
@@ -194,7 +194,7 @@ export function CalendarGrid({
                     {day.dayNumber}
                   </span>
 
-                  <div className="absolute inset-x-2 bottom-2 text-[10px] text-slate-300">
+                  <div className="absolute inset-x-1.5 bottom-1.5 text-[9px] text-slate-300">
                     {selectedTaskId && isWithinRange(day.iso, selectedRange)
                       ? "已选中任务范围"
                       : isWithinRange(day.iso, selectedRange)
@@ -211,7 +211,7 @@ export function CalendarGrid({
                 return (
                   <div
                     className={cn(
-                      "flex h-5 min-w-0 items-center gap-1 border px-1 shadow-sm transition",
+                      "flex h-[18px] min-w-0 items-center gap-1 border px-1 shadow-sm transition",
                       color.chipClass,
                       segment.startsHere ? "rounded-l-lg" : "rounded-l-md",
                       segment.endsHere ? "rounded-r-lg" : "rounded-r-md",
@@ -235,7 +235,7 @@ export function CalendarGrid({
                     {segment.startsHere ? (
                       <button
                         className={cn(
-                          "h-4 w-2 shrink-0 cursor-ew-resize rounded-full transition",
+                          "h-3.5 w-2.5 shrink-0 cursor-ew-resize rounded-full transition",
                           isSelected
                             ? "bg-slate-900/40 hover:bg-slate-900/60"
                             : "bg-slate-900/15 hover:bg-slate-900/30",
@@ -253,7 +253,7 @@ export function CalendarGrid({
                     )}
 
                     <button
-                      className="min-w-0 flex-1 truncate text-left text-[10px] font-semibold"
+                      className="min-w-0 flex-1 truncate text-left text-[9px] font-semibold"
                       onClick={() => onTaskSelect(segment.task.id)}
                       title={`${segment.task.title} · 右键删除`}
                       type="button"
@@ -264,7 +264,7 @@ export function CalendarGrid({
                     {segment.endsHere ? (
                       <button
                         className={cn(
-                          "h-4 w-2 shrink-0 cursor-ew-resize rounded-full transition",
+                          "h-3.5 w-2.5 shrink-0 cursor-ew-resize rounded-full transition",
                           isSelected
                             ? "bg-slate-900/40 hover:bg-slate-900/60"
                             : "bg-slate-900/15 hover:bg-slate-900/30",

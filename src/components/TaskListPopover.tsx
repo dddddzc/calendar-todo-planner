@@ -7,6 +7,7 @@ interface TaskListPopoverProps {
   isOpen: boolean;
   tasks: Task[];
   onClose: () => void;
+  onTaskDelete: (taskId: string) => void;
   onTaskSelect: (taskId: string) => void;
 }
 
@@ -14,6 +15,7 @@ export function TaskListPopover({
   isOpen,
   tasks,
   onClose,
+  onTaskDelete,
   onTaskSelect,
 }: TaskListPopoverProps) {
   if (!isOpen) {
@@ -54,29 +56,47 @@ export function TaskListPopover({
                   const color = COLOR_MAP[task.color];
 
                   return (
-                    <button
+                    <article
                       className={cn(
-                        "block w-full rounded-[22px] border bg-white px-4 py-4 text-left shadow-sm transition hover:-translate-y-0.5",
+                        "rounded-[22px] border bg-white px-4 py-4 text-left shadow-sm transition hover:-translate-y-0.5",
                         color.borderClass,
                       )}
                       key={task.id}
-                      onClick={() => {
-                        onTaskSelect(task.id);
-                        onClose();
-                      }}
-                      type="button"
                     >
-                      <div className="flex items-center gap-2">
-                        <span className={cn("h-3 w-3 rounded-full", color.swatchClass)} />
-                        <p className="truncate text-sm font-semibold text-slate-900">{task.title}</p>
+                      <div className="flex items-start justify-between gap-3">
+                        <button
+                          className="min-w-0 flex-1 text-left"
+                          onClick={() => {
+                            onTaskSelect(task.id);
+                            onClose();
+                          }}
+                          type="button"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className={cn("h-3 w-3 rounded-full", color.swatchClass)} />
+                            <p className="truncate text-sm font-semibold text-slate-900">{task.title}</p>
+                          </div>
+                          <p className="mt-2 text-xs text-slate-500">
+                            {formatRangeLabel({
+                              start: task.startDate,
+                              end: task.endDate,
+                            })}
+                          </p>
+                        </button>
+
+                        <button
+                          className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-500 transition hover:border-rose-200 hover:text-rose-600"
+                          onClick={() => {
+                            if (window.confirm(`删除任务「${task.title}」？`)) {
+                              onTaskDelete(task.id);
+                            }
+                          }}
+                          type="button"
+                        >
+                          删除
+                        </button>
                       </div>
-                      <p className="mt-2 text-xs text-slate-500">
-                        {formatRangeLabel({
-                          start: task.startDate,
-                          end: task.endDate,
-                        })}
-                      </p>
-                    </button>
+                    </article>
                   );
                 })
               )}
